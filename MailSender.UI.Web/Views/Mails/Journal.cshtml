@@ -1,0 +1,22 @@
+﻿@model MailSender.UI.Web.Models.MailViewModel
+@(Html.Kendo().Grid<MailSender.UI.Web.Models.JournalViewModel>()
+        .Name("gridJournal_" + @Model.id)
+        .Columns(columns =>
+        {
+            columns.Bound(p => p.Date).Title("Дата отправки").Format("{0: dd:MM:yyyy HH:mm}").ClientTemplate(" #= kendo.toString(kendo.parseDate(Date, 'yyyy-MM-dd HH:mm'), 'dd.MM.yyyy HH:mm') #").Width(250).Filterable(ftb => ftb.Cell(cell => cell.Operator("gte").ShowOperators(false)));
+            columns.Bound(p => p.Target.Name).Title("Получатель").Filterable(ftb => ftb.Cell(cell => cell.Operator("contains").ShowOperators(false).SuggestionOperator(FilterType.Contains)));
+            columns.Bound(p => p.Date.Date).Title("Дата отправки").Hidden(true).ClientGroupHeaderTemplate(" #= kendo.toString(kendo.parseDate(value, 'yyyy-MM-dd'), 'dd.MM.yyyy') # ");
+        })
+        .Groupable()
+        .Filterable(fb=>fb.Mode(GridFilterMode.Row))
+        .DataSource(dataSource => dataSource
+            .Ajax()
+            .Read(read => read.Action("ReadJournal", "MailsService", new { MessageID = Model.MessageID }))
+             .Group(groups =>
+             {
+                 groups.AddDescending(p => p.Date.Date);
+
+
+             })
+         )
+)

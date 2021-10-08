@@ -1,0 +1,47 @@
+﻿@(Html.Kendo().TreeList<MailSender.UI.Web.Models.RegulationViewModel>()
+        .Name("treelist")
+        .Columns(columns =>
+        {
+            columns.Add().Field(f => f.Name).TemplateId("treeview-template");
+        })
+        .DataSource(dataSource => dataSource
+            .Read(read => read.Action("TreeList", "RegulationsService").Data("ReadDatesPeriod"))
+            .Model(m =>
+            {
+                m.Id(f => f.Id);
+                m.ParentId(f => f.ParentId);
+            })
+        )
+)
+<script id="treeview-template" type="text/kendo-ui-template">
+    <span class="tree-node">
+        <span style="white-space:normal;">
+
+            <span class="folder-name">
+                # if (Disabled) { #
+                # if (isEdit ==1) { #
+                <span class='k-icon k-i-minus-circle'></span>
+                # } #
+                #} else { #
+                <span class='k-icon k-i-check-circle'></span>
+                # } #
+                #: Name #
+            </span>
+
+        </span>
+
+        <div style="float:right;">
+            <span class="badge">#: Total #</span>
+
+            <span class="badge badge-count" # if (Count <= 0) { # style="display:none" # } #>+#: Count #</span>
+
+            # if (isEdit == 1) { #
+            <span class='k-icon k-i-edit regulation-action regulation-edit' title="Редактировать"></span>
+            <span class='k-icon k-i-copy regulation-action regulation-copy' title="Копировать"></span>
+            <span class='k-icon k-i-close regulation-action regulation-delete' title="Удалить"></span>
+            # } else if(isEdit != 0) { #
+            <span class='k-icon k-i-user regulation-action regulation-settargets' title="Получатели"></span>
+            # } #
+        </div>
+    </span>
+</script>

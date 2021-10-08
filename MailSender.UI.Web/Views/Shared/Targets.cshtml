@@ -1,0 +1,24 @@
+﻿@model IEnumerable<string>
+@Scripts.Render("~/Scripts/Targets.js")
+@(Html.Kendo().DropDownTree()
+                                                                  .Name("sendto")
+                                                                  .HtmlAttributes(new { style = "width: 100%;", @class = "k-textbox k-valid", required = "required", validationmessage = "Выберите получателей!" })
+                                                                  .AutoClose(false)
+                                                                  .Value(Model != null ? Model : null)
+                                                                  .LoadOnDemand(false)
+                                                                  .Checkboxes(true)
+                                                                  .Filter("Contains")
+                                                                  .Placeholder("Выберите получателей...")
+                                                                  .BindTo((IEnumerable<DropDownTreeItemModel>)ViewBag.Targets)
+                                                                  .Events(ev => ev.Change("onChangeSendto").DataBound("onDataBoundSendto"))
+                                                                  .DataSource(source =>
+                                                                            {
+                                                                                source.Model(model => model.Id("Value"));
+
+                                                                            })
+)
+<style>
+    .k-treeview .k-in {
+        white-space: normal;
+    }
+</style>

@@ -1,0 +1,55 @@
+﻿@model  MailSender.UI.Web.Models.RegulationViewModel
+<script type="text/javascript">
+
+    //Send Mail
+    function SaveTargets()
+    {
+        var validator = $("#targets-form").kendoValidator().data("kendoValidator");
+        if (validator.validate()) {
+
+            $.ajax({
+                url: "@Url.Action("SetTargets", "RegulationsService")",
+                datatype: 'json',
+                type: 'POST',
+                contentType: 'application/x-www-form-urlencoded;charset=Windows-1251',
+                data: { Id: $("#Id").val(),targets: dropdowntree.value() },
+                success: function (data) {
+                    if (data.message == "OK") {
+
+                        closeWindow();
+                        refreshTreeNode(data.result);
+                        
+
+                    }
+                    else {
+
+                        showError(data.errors);
+                    }
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    showError(thrownError + "-" + xhr.status);
+                }
+            });
+        }
+    }
+
+
+</script>
+<div class="k-edit-form-container" style="width:100%;  min-width:500px;max-width:700px;">
+    <form id="targets-form" style="height:100%;">
+        <div style="margin: 10px;">
+            @(Html.HiddenFor(m => m.Id))
+        </div>
+        <div style="margin: 10px;">
+            <label class="k-label k-form-label" for="Filter"><strong>Получатели:</strong></label>
+            <div class="k-form-field-wrap" data-container-for="sendto">
+                @Html.Action("Targets", "Targets", Model.sendto != null ? Model.sendto.Select(s => s.ToString()) : null)
+            </div>
+            <span data-for="sendto" class="k-invalid-msg"></span>
+        </div>
+    </form>
+    <div class="k-edit-buttons k-state-default">
+        @(Html.Kendo().Button().Name("okAdd").Tag("div").HtmlAttributes(new { type = "button", @class = "k-primary" }).Icon("check").Content("Сохранить").Events(click => click.Click("SaveTargets")))
+        @(Html.Kendo().Button().Name("cancelAdd").Tag("em").HtmlAttributes(new { type = "button" }).Icon("cancel").Content("Отмена").Events(click => click.Click("closeWindow")))
+    </div>
+</div>

@@ -1,0 +1,136 @@
+﻿@model  MailSender.UI.Web.Models.RegulationViewModel
+
+<script type="text/javascript">
+
+
+    function getData() {
+        var id = $("#Id").val();
+        var name = $("#Name").val();
+        var filter = kendo.stringify($("#filter").getKendoFilter().getOptions());
+        var disabled = $("#Disabled").data("kendoSwitch").check();
+        var sendto = $("#sendto").data("kendoDropDownTree").value();
+
+        return { Id: id, Name: name, Filter: filter, Disabled: disabled, sendto: sendto }
+    }
+
+    
+     function SaveRegulation(e) {
+         var validator = $("#regulation-add").kendoValidator().data("kendoValidator");
+
+         if (validator.validate()) {
+
+             //reload tree
+             var tree = $("#RegulationsTreeView").data("kendoTreeView");
+             var dataSource = tree.dataSource;
+             var reload = true;
+
+             var filter = getData().Filter;
+             var id = getData().Id;
+
+             if (id != 0) {
+                 
+                 if (filter === dataSource.get(id).Filter) {
+                     reload = false;
+                 }
+             }
+
+            
+
+            $.ajax({
+                type: "POST",
+                url: "@Url.Action("CreateUpdate", "RegulationsService")", 
+                datatype: 'json',
+                data: getData(),
+                success: function (data) {
+
+                        if (data.message == "OK") {
+                           
+                            closeWindow();
+
+                            if (reload) {
+                                //Reload data
+                                dataSource.data([]);
+
+                                LoadData(data.result.Id);
+
+                            }
+                            else {
+
+                                refreshTreeNode(data.result);
+
+                            }
+
+                        }
+                        else {
+
+                            //$(".errors").text(data.errors);
+                            showError(data.errors);
+                        }
+                    },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    //$(".errors").text(xhr.status + " " + thrownError);
+                    showError(xhr.status + " " + thrownError);
+                    }
+            });
+        }
+    }
+</script>
+
+<div class="k-edit-form-container" style="width:100%;  min-width:500px;max-width:700px;">
+    <!-- style="width: auto;">-->
+    <form id="regulation-add" style="height:100%;">
+        <div style="margin: 10px;">
+            @(Html.HiddenFor(m => m.Id))
+        </div>
+        <div style="margin: 10px;">
+            @(Html.HiddenFor(m => m.Filter))
+        </div>
+        <div style="margin: 10px;">
+            <label class="k-label k-form-label" for="Name"><strong>Наименование:</strong></label>
+            <div class="k-form-field-wrap" data-container-for="Name">
+                @(Html.TextBoxFor(m => m.Name, new { style = "width:100%;", @class = "k-textbox k-valid", required = "required", validationmessage = "Поле 'Наименование' является обязательным!" }))
+            </div>
+            <span data-for="Name" class="k-invalid-msg"></span>
+        </div>
+        <div style="margin: 10px;">
+            <label class="k-label k-form-label" for="Filter"><strong>Условия выбора:</strong></label>
+            <div class="k-form-field-wrap" data-container-for="filter">
+                @(Html.Kendo().Filter<MailSender.UI.Web.Models.MailViewModel>()
+                                                                                        .Name("filter")
+                                                                                        .ExpressionPreview(true)
+                                                                                        .HtmlAttributes(new { required = "required" })
+                                                                                        .Operators(operators => operators.String(h => h.Contains("Содержит").Eq("Равно").Isempty("Пусто")))
+                                                                                        .Messages(m => m.And("И").Or("ИЛИ"))
+                                                                                        .Fields(f =>
+                                                                                        {
+                                                                                            f.Add(p => p.From).Label("От");
+                                                                                            f.Add(p => p.To).Label("Кому");
+                                                                                            f.Add(p => p.Subject).Label("Тема");
+                                                                                            f.Add(p => p.Body).Label("Содержание");
+                                                                                        })
+                )
+            </div>
+            <span data-for="filter" class="k-invalid-msg"></span>
+        </div>
+            <div style="margin: 10px;">
+               
+                <label class="k-label k-form-label" for="Disabled"><strong>Отключено:</strong></label>
+                <span style="margin-left: 10px;">
+                    @(Html.Kendo().SwitchFor(m => m.Disabled).Messages(c => c.Checked("Да").Unchecked("Нет")))
+                    <!-- Content validation message placeholder -->
+                    <span data-for="Disabled" class="k-invalid-msg"></span>
+                </span>
+            </div>
+            <div style="margin: 10px;">
+                <label class="k-label k-form-label" for="Filter"><strong>Получатели:</strong></label>
+                <div class="k-form-field-wrap" data-container-for="sendto">
+                    @Html.Action("Targets", "Targets", Model.sendto != null ? Model.sendto.Select(s => s.ToString()) : null)
+                </div>
+                    <span data-for="sendto" class="k-invalid-msg"></span>
+             </div>
+</form>
+    <div class="k-edit-buttons k-state-default">
+        @(Html.Kendo().Button().Name("okAdd").Tag("div").HtmlAttributes(new { type = "button", @class = "k-primary" }).Icon("check").Content("Сохранить").Events(click => click.Click("SaveRegulation")))
+        @(Html.Kendo().Button().Name("cancelAdd").Tag("em").HtmlAttributes(new { type = "button" }).Icon("cancel").Content("Отмена").Events(click => click.Click("closeWindow")))
+    </div>
+</div>

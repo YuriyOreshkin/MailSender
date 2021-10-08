@@ -1,0 +1,63 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="~/favicon.ico" sizes="24x24">
+    <title>@ViewBag.Title</title>
+    @Styles.Render("~/Content/css")
+    @Scripts.Render("~/bundles/modernizr")
+    @Scripts.Render("~/bundles/kendo")
+    @Scripts.Render("~/bundles/bootstrap")
+
+
+    @*<link href="@Url.Content("~/Content/bootstrap.min.css")" rel="stylesheet" type="text/css" />
+        <link href="@Url.Content("~/Content/Site.css")" rel="stylesheet" type="text/css" />
+        <script src="@Url.Content("~/Scripts/kendo/2019.2.514/jszip.min.js")"></script>
+        <script src="@Url.Content("~/Scripts/bootstrap.min.js")"></script>*@
+</head>
+<body>
+    <header class="main-header">
+        <a href="@Url.Action("Index", "Mails")" title="Go to Home">
+            <h1 class="logo">
+                MailSender
+            </h1>
+        </a>
+        @(Html.Kendo().Menu()
+                                              .Name("mainMenu")
+                                              .Items(items =>
+                                              {
+                                                  items.Add().Text("Почта").Action("Index", "Mails");
+                                                  items.Add().Text("Настройки").Action("Index", "Settings");
+                                              })
+        )
+      
+    </header>
+    <div style="position: fixed; top: 59px; left: 0; width: 100%; height: 94%; margin-bottom:5px;">
+        @RenderBody()
+    </div>
+    <span id="notification"></span>
+
+    @RenderSection("scripts", required: false)
+</body>
+
+</html>
+<script>
+    function showSuccess(message) {
+
+        var notification = $("#notification").kendoNotification({
+            autoHideAfter: 3000
+        }).data("kendoNotification");
+
+        notification.show(message, "success");
+    }
+
+    function showError(message) {
+
+        var notification = $("#notification").kendoNotification({
+            autoHideAfter: 0
+        }).data("kendoNotification");
+
+        notification.show(message, "error");
+    }
+</script>

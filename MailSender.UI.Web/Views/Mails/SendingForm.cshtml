@@ -1,0 +1,107 @@
+﻿<script type="text/javascript">
+
+
+    //Send Mail 
+    function SendOut()
+    {
+        var validator = $("#sending-form").kendoValidator().data("kendoValidator");
+        if (validator.validate()) {
+            //Parametrs
+            var data = {};
+            GetSelectedMessageId(data);
+            data["targets"] = dropdowntree.value();
+
+            $.ajax({
+                url: "@Url.Action("SendOut", "MailsService")",
+                datatype: 'json',
+                timeout: 20000,
+                type: 'POST',
+                contentType: 'application/x-www-form-urlencoded;charset=Windows-1251',
+                data: data,
+                success: function (data) {
+                    if (data.message == "OK") {
+
+                        closeWindow();
+                        //Mark Read
+                        MarkRowsRead(data.result, true);
+                        //Read Journal
+                        JournalsRead(data.result);
+                         
+                    }
+                    else {
+
+                        showError(data.errors);
+                    }
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    showError(thrownError + "-" + xhr.status);
+                }
+            });
+        }
+    }
+
+    //Mark read
+    function JournalsRead(ids) {
+       
+        for (var i = 0; i < ids.length; i++) {
+            var grid = $("#gridJournal_" + ids[i]).data('kendoGrid');
+            if (grid)
+            {
+                //Read Jounal
+                 grid.dataSource.read();
+            }
+        }
+
+    }
+
+    //Update targets
+    function onChange()
+    {
+        var targets = $("#sendto").data("kendoDropDownTree");
+        var items = this.dataItems();
+        items.forEach(function (item) {
+
+            targets.value(item.sendto);
+           
+        });
+
+        childsCheck(dropdowntree.value().slice(0));
+    }
+</script>
+<div class="k-edit-form-container" style="width:100%;  min-width:500px;max-width:700px;">
+    <form id="sending-form" style="height:100%;">
+        <div style="margin: 10px;">
+            <label class="k-label k-form-label" for="Name"><strong>Правила:</strong></label>
+            <div class="k-form-field-wrap" data-container-for="Name">
+                @(Html.Kendo().MultiSelect()
+                                               .Name("RegulationsMultiSelect")
+                                               .DataTextField("Name")
+                                               .DataValueField("Id")
+                                               .Placeholder("Правило...")
+                                               //.AutoBind(false)
+                                               .DataSource(source =>
+                                               {
+                                                   source.Read(read =>
+                                                   {
+                                                       read.Action("ListRead", "RegulationsService");//.Data("onAdditionalData");
+
+                                                   });
+                                                   source.ServerFiltering(true);
+                                               })
+                                               .Events(ev => ev.Change("onChange"))
+                )
+            </div>
+        </div>
+        <div style="margin: 10px;">
+            <label class="k-label k-form-label" for="Filter"><strong>Получатели:</strong></label>
+            <div class="k-form-field-wrap" data-container-for="sendto">
+                @Html.Action("Targets", "Targets")
+            </div>
+            <span data-for="sendto" class="k-invalid-msg"></span>
+        </div>
+    </form>
+    <div class="k-edit-buttons k-state-default">
+        @(Html.Kendo().Button().Name("okAdd").Tag("div").HtmlAttributes(new { type = "button", @class = "k-primary" }).Icon("check").Content("Отправить").Events(click => click.Click("SendOut")))
+        @(Html.Kendo().Button().Name("cancelAdd").Tag("em").HtmlAttributes(new { type = "button" }).Icon("cancel").Content("Отмена").Events(click => click.Click("closeWindow")))
+    </div>
+</div>

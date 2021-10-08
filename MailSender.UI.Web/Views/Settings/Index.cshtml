@@ -1,0 +1,19 @@
+﻿
+@{
+    ViewBag.Title = "Настройки";
+ 
+}
+
+@(Html.Kendo().TabStrip()
+
+                        .Name("settingsTabStrip")
+                        .TabPosition(TabStripTabPosition.Top)
+                        .Items(items =>
+                        {
+                            items.Add().Text("Настройка почты").Selected(true).LoadContentFrom("MailSettings", "MailSettings");
+                            items.Add().Text("Расписание").LoadContentFrom("SchedulerSettings", "SchedulerSettings");
+                            items.Add().Text("Лог").LoadContentFrom("Log", "LogSettings");
+                        })
+)
+
+

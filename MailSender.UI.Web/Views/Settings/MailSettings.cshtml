@@ -1,0 +1,96 @@
+﻿@model MailSender.UI.Web.Models.DominoSettingsViewModel
+<script>
+    function setColor(isConnected) {
+        if (isConnected) {
+
+            $("#isConnected").css("color", "#1aae1d");
+        }
+        else {
+
+            $("#isConnected").css("color", "#ff0000");
+        }
+    }
+
+    function saveSettings()
+    {
+        var validator = $("#mail-settings").kendoValidator().data("kendoValidator");
+
+        if (validator.validate()) {
+            $.ajax({
+                type: "POST",
+                url: "@Url.Action("SaveSettings", "MailSettings") ",
+                datatype: 'json',
+                data: $('#mail-settings').serialize(),
+                success: function (data) {
+
+                    if (data.message == "OK") {
+
+                        setColor(data.result.isConnected);
+                        showSuccess("Настройки были успешно сохранены!")
+                        //kendo.alert("<span  class='k-icon k-i-check' style='font-size: 32px; color: #1aae1d'></span><span  style='margin-left: 15px;'>Settings has been saved Successfully.</span>");
+                    }
+                    else {
+
+                        showError(data.errors);
+
+                    }
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+
+                    showError(thrownError + "-" + xhr.status);
+                }
+            });
+
+        }
+
+    }
+</script>
+
+<div style="height:86vh;">
+    <div class="k-edit-form-container" style="margin-left: 25%; width:50%;">
+        <form id="mail-settings">
+            <fieldset class="k-form-fieldset" style="margin-bottom:20px;">
+                <legend class="k-form-legend">Настройки Domino Lotus</legend>
+                <div class="k-form-field">
+                    <span class="k-form-field-wrap"></span>
+                    <div style="width:50%; float:right;">
+                        <label class="k-label k-form-label" for="isConnected">Соединение:</label>
+                        @if (Model.isConnected)
+                        {
+                            <span id="isConnected" class="k-icon k-i-brightness-contrast" style="font-size: 32px; color: #1aae1d"></span>
+                        }
+                        else
+                        {
+                            <span id="isConnected" class="k-icon k-i-brightness-contrast" style="font-size: 32px; color: #ff0000"></span>
+                        }
+                    </div>
+                </div>
+                <div class="k-form-field">
+                    <label class="k-label k-form-label" for="Server">Сервер:</label>
+
+                    <div class="k-form-field-wrap">
+                        @Html.Kendo().TextBoxFor(m => m.server).HtmlAttributes(new { style = "width:100%;" })
+                    </div>
+                </div>
+                <div class="k-form-field">
+                    <label class="k-label k-form-label" for="dbname">База данных:</label>
+                    <div class="k-form-field-wrap">
+                        @Html.Kendo().TextBoxFor(m => m.dbname).HtmlAttributes(new { style = "width:100%;" })
+                    </div>
+                </div>
+                <div class="k-form-field">
+                    <label class="k-label k-form-label" for="Password">Пароль:</label>
+                    <div class="k-form-field-wrap">
+                        @Html.Kendo().TextBoxFor(m => m.password).HtmlAttributes(new { type = "password", style = "width:100%;" })
+                    </div>
+                </div>
+
+            </fieldset>
+        </form>
+            <div class="k-edit-buttons k-state-default">
+                @(Html.Kendo().Button().Name("Save").Tag("div").HtmlAttributes(new { type = "button", @class = "k-primary" }).Icon("check").Content("Сохранить").Events(click => click.Click("saveSettings")))
+            </div>
+       
+    </div>
+</div>
+

@@ -1,0 +1,601 @@
+﻿<div class="toolbar">
+
+    @(Html.Kendo().Menu()
+                        .Name("mailMenu")
+                        .OpenOnClick(true)
+                        .Items(items =>
+                        {
+
+                            items.Add().Encoded(false).Text("<span class=\"k-icon k-i-redo\"></span>Переслать").HtmlAttributes(new { @operation = "send" }).Enabled(false);
+
+                            items.Add().Encoded(false).Text("<span class=\"k-icon k-i-email\"></span>Пометить как").Enabled(false)
+                                .Items(children =>
+                                {
+                                    children.Add().Text("Отправленное").HtmlAttributes(new { @id = "mm-read", @operation = "read" });
+                                    children.Add().Separator(true);
+                                    children.Add().Text("Неотправленное").HtmlAttributes(new { @id = "mm-unred", @operation = "unread" });
+
+                                });
+                            items.Add().Encoded(false).Text("<span class=\"k-icon k-i-delete\"></span>Удалить").HtmlAttributes(new { @operation = "delete" }).Enabled(false);
+
+
+                        })
+                    .Events(e => e.Select("mailMenuSelect"))
+    )
+
+</div>
+<!--ContextMenu-->
+@(Html.Kendo().ContextMenu()
+                        .Name("mailContextMenu")
+                        .Target("#mailsGrid")
+                        .Orientation(ContextMenuOrientation.Vertical)
+                        .Items(items =>
+                        {
+                            items.Add().Encoded(false).Text("Открыть в окне").HtmlAttributes(new { @operation = "details" }).Enabled(false);
+                            items.Add().Separator(true);
+                            items.Add().Encoded(false).Text("<span class=\"k-icon k-i-redo\"></span>Переслать").HtmlAttributes(new { @operation = "send" }).Enabled(false);
+                            items.Add().Separator(true);
+                            items.Add().Encoded(false).Text("<span class=\"k-icon k-i-email\"></span>Пометить как").Enabled(false)
+                            .Items(children =>
+                            {
+                                children.Add().Encoded(true).Text("Отправленное").HtmlAttributes(new { @operation = "read" });
+                                children.Add().Separator(true);
+                                children.Add().Text("Неотправленное").HtmlAttributes(new { @operation = "unread" });
+
+                            });
+                            items.Add().Encoded(false).Text("<span class=\"k-icon k-i-delete\"></span>Удалить").HtmlAttributes(new { @operation = "delete" }).Enabled(false);
+
+                        })
+                    .Events(e => e.Select("mailMenuSelect").Open("mailContextMenuOpen"))
+)
+
+
+
+@(Html.Kendo().Grid<MailSender.UI.Web.Models.MailViewModel>()
+                                            .Name("mailsGrid")
+                                            .HtmlAttributes(new { style = "height:95%;" })
+                                            .AutoBind(false)
+                                            .Resizable(resize => resize.Columns(true))
+                                            .ToolBar(toolbar =>
+                                                    {
+                                                        toolbar.Template( @<text>
+
+                                                            <div style="float:right;margin: .16em; vertical-align: middle;">
+                                                                <label class="period-label" for="period" style=" padding-right: .40em; margin-top: 0.30em;">Период:</label>
+                                                                @(Html.Kendo().DateRangePicker()
+                                                                                            .Name("daterangepicker")
+                                                                                            .HtmlAttributes(new { style = "float:right; background-color:transparent;" })
+                                                                                            .Labels(false)
+                                                                                            .Range(r => r.Start(DateTime.Now).End(DateTime.Now))
+                                                                                            .Culture("ru-RU")
+                                                                                            .Events(ev => ev.Change("onDateRangeChange"))
+                                                                )
+                                                            </div>
+                                                        </text>);
+                                            })
+                                                .Columns(columns =>
+                                                {
+                                                    columns.Select().Width(50);
+                                                    columns.Bound(p => p.isSent).Hidden().ClientGroupHeaderTemplate(" <input type='checkbox' class='k-checkbox' id='is-sent-#=value#' onchange='selectGroup(this,#=value#)' /><label class='k-checkbox-label' for='is-sent-#=value#'> #if(value) { # Отправленные  # } else { #  Неотправленные #}#  : #= count#  </label>");
+                                                    //columns.Bound(p => p.MessageID).Title("").Width(60).Sortable(false).ClientTemplate("<input type='checkbox' class='chkbx' />").HeaderTemplate("<input type='checkbox' class='master-checkbox' />");
+                                                    columns.Bound(p => p.From).ClientFooterTemplate("<span>Всего записей : #=count#</span><span style='margin-left:30px;'>из них выделенных: <span id='count-selected-rows'>0</span></span>").Filterable(false);
+                                                    columns.Bound(p => p.Subject).Filterable(false);
+                                                    columns.Bound(p => p.Date).Width(150).Format("{0: dd.MM.yyyy HH:mm}").Filterable(false);
+                                                })
+                                                .Scrollable(sc => sc.Endless(true))
+                                                .Sortable()
+                                                .PersistSelection()
+                                                .Filterable()
+                                                //.Groupable()
+                                                .Pageable(p => p.Enabled(false))
+                                                .Selectable(s => s.Mode(GridSelectionMode.Multiple))
+                                                .ClientDetailTemplateId("mail-details-template")
+                                                .DataSource(dataSource => dataSource
+                                                    .Ajax()
+                                                    .Group(group => group.Add(p => p.isSent))
+                                                    .Aggregates(aggregates =>
+                                                    {
+                                                        aggregates.Add(p => p.From).Count();
+                                                        aggregates.Add(p => p.isSent).Count();
+                                                    })
+                                                    .PageSize(25)
+                                                    .Read(read => read.Action("GridRead", "MailsService").Data("ReadDatesPeriod"))
+                                                //.Events(e => e.Change("dataSourceChange").RequestEnd("dataSourceRequestEnd"))
+                                                )
+                                                .Events(e => e.Change("mailSelectionChanged").DataBound("mailGridDataBound"))
+)
+
+@(Html.Kendo().Window()
+                .Name("window")
+                .Modal(true)
+                .Visible(false)
+                .Resizable()
+                .Draggable()
+                .Width(800)
+                .Title("Детали")
+                .HtmlAttributes(new { style = "height: 100%;" })
+
+)
+
+
+<script id="mail-details-template" type="text/x-kendo-template">
+@(Html.Kendo().TabStrip()
+                    .Name("tabStrip_#=id#")
+                    .SelectedIndex(0)
+                    .Animation(animation => animation.Open(open => open.Fade(FadeDirection.In)))
+                    .TabPosition(TabStripTabPosition.Left)
+                    .Items(items =>
+                    {
+                        items.Add().Text("Содержание").Content(@<text>
+                        <div class="mail-details">
+                            <div class="mail-details-header">
+                                <h2 class="mail-subject">#= Subject #</h2>
+                                <p class="mail-date">#=kendo.toString(kendo.parseDate(Date),'dd.MM.yyyy HH:mm') #</p>
+                                <p class="mail-sender-wrapper">
+                                    <div>
+                                        <label>От:</label>
+                                        <span class="mail-sender">#= From #</span>
+                                    </div>
+                                    <div>
+                                        <label>Кому:</label>
+                                        <span class="mail-sender">#= To #</span>
+                                    </div>
+                                </p>
+                            </div>
+                            <div class="mail-text" style="white-space: pre-wrap;">
+                                <p>#= Body # </p>
+                            </div>
+                        </div>
+                    </text>);
+                            items.Add().Text("Журнал").LoadContentFrom("Journal", "Mails", new MailSender.UI.Web.Models.MailViewModel { MessageID = "#=MessageID#" });
+                        })
+                                                                            .ToClientTemplate()
+)
+
+</script>
+
+<script>
+
+
+    // Attach new mails handler
+   // $("#mailsGrid").on("mousedown", "tr[role='row']", function (e) {
+        $("#mailsGrid").on("mousedown", "tr", function (e) {
+            if (e.which === 3) {
+                var element = $(this);
+                var mailGrid = $("#mailsGrid").data("kendoGrid");
+
+                if ($(this).hasClass("k-detail-row")) {
+                    element = $(this.previousSibling)
+                    mailGrid.clearSelection();
+                    mailGrid.select(element);
+                }
+                else {
+                    if (!element.hasClass("k-state-selected")) {
+
+                        mailGrid.clearSelection();
+                        mailGrid.select(element);
+                    }
+                }
+
+        }
+    });
+
+
+    //DateRange Change
+    function onDateRangeChange(e)
+    {
+        var range = this.range();
+        var dateBegin = range.start;
+        var dateEnd = range.end;
+
+        if ((dateBegin != null || dateBegin != undefined) && (dateEnd != null || dateEnd != undefined))
+        {
+            var treeview = $("#RegulationsTreeView").data("kendoTreeView");
+            var node = treeview.select();
+            var item = treeview.dataItem(node);
+            LoadData(item.Id);
+        }
+    }
+
+    //Get parameters for Grid
+    function ReadDatesPeriod() {
+        var daterangepicker = $("#daterangepicker").data("kendoDateRangePicker");
+        var range = daterangepicker.range()
+        var dateBegin = range.start;
+        var dateEnd = range.end;
+
+        return { datebegin: dateBegin.toJSON(), dateend: dateEnd.toJSON() }
+    }
+
+    //Row Command
+    function showDetails(e) {
+        e.preventDefault();
+        var row = $(e.currentTarget).closest("tr");
+        SetContextMenuTarget("#window");
+        Details(row);
+    }
+
+     //Show Detail in Window
+    function Details(row)
+    {
+        var grid = $("#mailsGrid").data("kendoGrid");
+        var dataItem = grid.dataItem(row);
+        var wnd = $("#window").data("kendoWindow");
+
+        var detailsTemplate = kendo.template($("#mail-details-template").html());
+        var detailRow = $(row).next('.k-detail-row')
+
+        //Datail init
+        if (detailRow.length > 0) {
+
+            wnd.content(detailRow.find('.k-tabstrip'));
+            grid.collapseRow(row);
+
+            detailRow.remove();
+        }
+        else {
+            wnd.content(detailsTemplate(dataItem));
+        }
+
+        wnd.center().open();
+
+    }
+
+    function mailGridDataBound(e) {
+        var grid = e.sender;
+
+        for (var i = 0; i < grid.tbody.find(">tr").length; i++) {
+            var item = grid.dataItem(grid.tbody.find(">tr")[i]);
+            if (item.isSent == false) {
+                $(grid.tbody.find(">tr")[i]).addClass("unread")
+            }
+        }
+
+
+        //Double click
+        grid.element.off('dblclick');
+
+        grid.element.on('dblclick', 'tbody tr[data-uid]', function (e) {
+
+            showDetails(e);
+        })
+
+        //Footer selected rows
+        WriteAllSelectedRows(grid.select().length);
+    }
+
+    function SetContextMenuTarget(target) {
+
+        var menu = $("#mailContextMenu").data("kendoContextMenu");
+
+
+        menu.setOptions({
+            target: target
+        });
+        }
+
+        //SelectGroup
+        function selectGroup(sender,issent)
+        {
+
+            var grid = $("#mailsGrid").data('kendoGrid');
+            var data = grid.dataSource.data();
+            var checked = sender.checked;
+            for (var i = 0; i < data.length; i++) {
+
+                if (data[i].value == issent) {
+                    for (var j = 0; j < data[i].items.length; j++) {
+                        var item =data[i].items[j];
+                        var tr = $("[data-uid='" + item.uid + "']", grid.tbody); //use the dataItem's uid to find its corresponding row
+                        if (checked) {
+                            //select
+                            grid.select(tr);
+                        }
+                        else {
+
+                            //deselect
+                            if ($(tr).hasClass("k-state-selected")) {
+
+                                $(tr).removeClass("k-state-selected");
+                                $(tr).find(".k-checkbox").prop("checked", sender.checked);
+
+                            }
+                        }
+                    }
+                }
+                //data["messages[" + i + "]"] = item.MessageID;
+
+            }
+
+
+
+        }
+
+    //ContextMenu  Open
+    function mailContextMenuOpen(e) {
+        var mailsGrid = $("#mailsGrid").data('kendoGrid');
+        var mailsInView = mailsGrid.dataSource.view().length;
+
+        if (mailsInView == 0) {
+            e.preventDefault();
+        }
+
+    }
+
+
+
+    //Get Grid Selected MessageID
+    function GetParametres() {
+        var result = {};
+
+
+        var selectedRows = GetSelectedGridRows()
+
+        for (var i = 0; i < selectedRows.length; i++) {
+
+            result["messageId[" + i + "]"] = grid.dataItem(selectedRows[i]).MessageID;
+        }
+
+        return result;
+    }
+
+
+    //Get  Selected  Message ID
+    function GetSelectedMessageId(data)
+    {
+        var grid = $("#mailsGrid").data('kendoGrid');
+        var selectedRows = GetSelectedGridRows();
+
+        for (var i = 0; i < selectedRows.length; i++) {
+
+            var item = grid.dataItem(selectedRows[i]);
+            data["messages[" + i + "]"] = item.MessageID;
+
+        }
+    }
+
+    //Get Grid Selected Rows
+    function GetSelectedGridRows()
+    {
+        var mailsGrid = $("#mailsGrid").data('kendoGrid');
+
+        return mailsGrid.select();
+    }
+
+    // Menu select item handler and its functions
+    function mailMenuSelect(e) {
+        e.preventDefault();
+        switch (e.item.getAttribute("operation")) {
+            case "send":
+                SendingForm();
+                break;
+            case "details":
+                Details(GetSelectedGridRows()[0]);
+                break;
+            case "read":
+                mailMarkAsReadUnread("read");
+                break;
+            case "unread":
+                mailMarkAsReadUnread("unread");
+                break;
+            case "delete":
+                Delete();
+                break;
+
+        }
+    }
+
+
+
+    //Open sending form
+    function SendingForm()
+    {
+        data = {};
+        showWindows("Выберите получателей",  "@Url.Action("SendingForm", "Mails")", data)
+    }
+
+
+        function Update(read) {
+            var grid = $("#mailsGrid").data('kendoGrid');
+            var selected = grid.select();
+
+            for (var i = 0; i < grid.select().length; i++) {
+                var item = grid.dataItem(selected[i]);
+                item.set("isSent", read);
+            }
+
+            grid.dataSource.read();
+        }
+
+
+      function Delete()
+      {
+          //Parametrs
+        var data = {};
+
+        GetSelectedMessageId(data);
+
+        $.ajax({
+            url: "@Url.Action("Delete", "MailsService")",
+            datatype: 'json',
+            type: 'POST',
+            contentType: 'application/x-www-form-urlencoded;charset=Windows-1251',
+            data: data,
+            success: function (data) {
+                if (data.message == "OK") {
+
+                    DeleteRows();
+                }
+                else {
+
+                    showError(data.errors);
+                }
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                showError(thrownError + "-" + xhr.status);
+            }
+        });
+      }
+
+    function mailMarkAsReadUnread(id)
+    {
+        var read;
+        if (id === "read") {
+            read = true;
+        } else {
+            read = false;
+        }
+
+        //Parametrs
+        var data = {};
+
+        data["mark"] = read;
+
+        GetSelectedMessageId(data);
+
+        $.ajax({
+            url: "@Url.Action("MarkSent", "MailsService")",
+            datatype: 'json',
+            type: 'POST',
+            contentType: 'application/x-www-form-urlencoded;charset=Windows-1251',
+            data: data,
+            success: function (data) {
+                if (data.message == "OK") {
+
+                    MarkRowsRead(data.result, read)
+                }
+                else {
+
+                    showError(data.errors);
+                }
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                showError(thrownError + "-" + xhr.status);
+            }
+        });
+    }
+
+
+        function DeleteRows() {
+
+            var grid = $("#mailsGrid").data('kendoGrid');
+            var selected = grid.select();
+            grid.dataSource.read();
+
+            var sent = 0;
+
+
+
+            for (var i = 0; i < selected.length; i++)
+            {
+                var dataItem = grid.dataItem(selected[i]);
+                if (!dataItem.isSent)
+                {
+                    sent++;
+                }
+            }
+
+            //Set Total for filters
+            SetTreeCountAll(GetTreeCountAll() - selected.length);
+
+            //Set sent for filters
+            SetTreeCountSent(GetTreeCountSent() - sent);
+
+
+        }
+    //Mark read
+    function MarkRowsRead(ids ,read)
+    {
+
+        var grid = $("#mailsGrid").data('kendoGrid');
+        grid.dataSource.read();
+        if (read === true) {
+
+            SetTreeCountSent(GetTreeCountSent() - ids.length);
+        }
+        else
+        {
+            SetTreeCountSent(GetTreeCountSent() + ids.length);
+        }
+
+        setMenuItemsAvailability(false);
+        //var groups = grid.dataSource.data();
+        //for (var g = 0; g < groups.length; g++) {
+        //    var items = groups[g].items;
+        //    for (var i = 0; i < items.length; i++) {
+        //        var dataItem = grid.dataSource.get(items[i].id);
+
+        //        if (ids.indexOf(items[i].id) > -1) {
+        //            items[i].isSent = read;
+        //            var row = grid.tbody.find("tr[data-uid='" + dataItem.uid + "']").closest("tr");
+        //            var j = 0;
+        //            //dataItem.isSent = read;
+        //            //dataItem.set("isSent", read);
+        //            //console.log(dataItem);
+        //            //grid.dataSource.pushUpdate(dataItem);
+        //            if (read === true) {
+        //                j--;
+        //                row.removeClass("unread")
+        //            }
+        //            else {
+        //                j++;
+        //                row.addClass("unread");
+        //            }
+
+        //            SetTreeCountSent(GetTreeCountSent() + j);
+        //        }
+
+        //    }
+        //}
+
+    }
+
+
+
+    function WriteAllSelectedRows(count)
+    {
+        $("#count-selected-rows").text(count);
+    }
+
+    function mailSelectionChanged(e) {
+
+        var selectedRows = this.select();
+
+        WriteAllSelectedRows(selectedRows.length);
+
+        if (selectedRows.length > 0) {
+
+            setMenuItemsAvailability(true);
+
+        } else {
+
+            setMenuItemsAvailability(false);
+        }
+    }
+
+    //Enable/Disable menu
+    function setMenuItemsAvailability(isEnabled) {
+        var menu = $("#mailMenu").data("kendoMenu");
+        var contextmenu = $("#mailContextMenu").data("kendoContextMenu");
+
+        toggleEnableMenuItems(menu, 'mailMenu', isEnabled);
+
+        toggleEnableMenuItems(contextmenu, 'mailContextMenu', isEnabled);
+
+    }
+
+    function toggleEnableMenuItems(widget, widgetId, isEnabled) {
+        $("#" + widgetId).find(".k-item").each(function (index) {
+            widget.enable($(this), isEnabled);
+        });
+    }
+
+    // Populate the details view with the selected mail
+    function populateDetailsView(item) {
+        var template = kendo.template($("#mail-details-template").html());
+        var result = template(item); //Pass the data to the compiled template
+        $("#mail-details").html(result);
+    }
+
+</script>
+

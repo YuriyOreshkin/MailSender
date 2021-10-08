@@ -1,0 +1,69 @@
+﻿#regulations-pane {
+    background: #fafafa;
+}
+.main-sidebar {
+    width: 100%;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+   
+    overflow: auto;
+}
+  .main-sidebar .content {
+    flex: 1; }
+    .main-sidebar .new-regulation {
+        display: flex;
+        border-radius: 0px;
+        border: none;
+        padding: 10px 10px;
+        font-size: 16px;
+        cursor: pointer;
+        justify-content: initial;
+    }
+    .main-sidebar .new-btn:before {
+      display: inline-block;
+      content: "\e11f";
+      margin: 0 5px 0 0;
+      font: 24px "WebComponentsIcons";
+      vertical-align: middle; 
+
+    }
+
+
+    .main-sidebar .k-treeview .k-item {
+        padding: 0;
+        /*width: calc(100% - 50px);
+        margin-left: 16px;*/
+    }
+    .main-sidebar .k-treeview .k-in {
+        display: block;
+        border-radius: 0px;
+        padding: 10px 15px;
+        /*width: 100%;*/
+    }
+
+   
+    .main-sidebar .k-treeview .k-in:after {
+        content: "";
+        display: block;
+        clear: both;
+    }
+  .main-sidebar .k-treeview .folder-name {
+    float: left; }
+  .main-sidebar .k-treeview .number {
+    float: right; }
+  .main-sidebar .footer {
+    padding: 15px;
+    font-size: 10px;
+    color: #b7b7b7; }
+    .main-sidebar .footer .links {
+      color: #1e8edf;
+      font-size: 13px;
+      line-height: 26px;
+      margin-bottom: 10px;
+      cursor: pointer; }
+      .main-sidebar .footer .links p {
+        margin-bottom: 5px; }
+    .main-sidebar .footer > p {
+      margin-top: 10px; }
+

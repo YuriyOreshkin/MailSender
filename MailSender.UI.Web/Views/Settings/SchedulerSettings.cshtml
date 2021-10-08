@@ -1,0 +1,137 @@
+﻿@model  MailSender.UI.Web.Models.SchedulerSettingsViewModel
+<script>
+
+    var validator = $("#scheduler-settings")
+        .kendoValidator({
+            rules: { //StartAt<= EndAt Time
+                timeendvalidation: function (input) {
+                    if (input.is("[name='endingdailyat']") && input.val() != "") {
+                        input.attr("data-timeendvalidation-msg", "Время начала работы должно быть меньше окончания!");
+                        var timeend = $("#endingdailyat").data("kendoTimePicker").value(); // $("input[name='endingdailyat']").val();
+                        var timestart = $("#startingdailyat").data("kendoTimePicker").value(); //$("input[name='startingdailyat']").val();
+                        timestart = new Date(timestart);
+                        timeend = new Date(timeend);
+                        
+                        return timeend > timestart;
+                    }
+
+                    return true;
+                }
+            },
+            messages: { //custom rules messages
+                timeendvalidation: function (input) {
+                    // return the message text
+                    return input.attr("data-val-timeendvalidation");
+                }
+            }
+
+        }).data("kendoValidator");
+    function setColor(isConnected) {
+        if (isConnected) {
+
+            $("#isStarted").css("color", "#1aae1d");
+        }
+        else {
+
+            $("#isStarted").css("color", "#ff0000");
+        }
+    }
+
+    function saveSchedulerSettings()
+    {
+        //var validator = $("#scheduler-settings").kendoValidator().data("kendoValidator");
+
+        if (validator.validate()) {
+            $.ajax({
+                type: "POST",
+                url: "@Url.Action("SaveSettings", "SchedulerSettings") ",
+                datatype: 'json',
+                data: $('#scheduler-settings').serialize(),
+                success: function (data) {
+
+                    if (data.message == "OK") {
+
+                        setColor(data.result.isStarted);
+                        showSuccess("Настройки были успешно сохранены!")
+                        //kendo.alert("<span  class='k-icon k-i-check' style='font-size: 32px; color: #1aae1d'></span><span  style='margin-left: 15px;'>Settings has been saved Successfully.</span>");
+                    }
+                    else {
+
+                        showError(data.errors);
+
+                    }
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+
+                    showError(thrownError + "-" + xhr.status);
+                }
+            });
+
+        }
+
+    }
+</script>
+<div style="height:86vh;">
+    <div class="k-edit-form-container" style="margin-left: 25%; width:50%;">
+        <form id="scheduler-settings">
+            <fieldset class="k-form-fieldset" style="margin-bottom:20px;">
+                <legend class="k-form-legend">Настройки автоматической отправки</legend>
+                <div class="k-form-field">
+                    <label class="k-label k-form-label" for="Enable">Сервис:</label>
+                    <span class="k-form-field-wrap">
+                        @Html.Kendo().SwitchFor(m => m.enable).Messages(mes=>mes.Checked(" Выключить").Unchecked("Включить")).Width(105).Events(ev => ev.Change("saveSchedulerSettings"))
+                    </span>
+                    <div style="width:50%; float:right;">
+                        <label class="k-label k-form-label" for="Enable">Соединение:</label>
+                        @if (Model.isStarted)
+                        {
+                            <span id="isStarted" class="k-icon k-i-brightness-contrast" style="font-size: 32px; color: #1aae1d"></span>
+                        }
+                        else
+                        {
+                            <span id="isStarted" class="k-icon k-i-brightness-contrast" style="font-size: 32px; color: #ff0000"></span>
+                        }
+                    </div>
+                </div>
+                <div class="k-form-field">
+                    <label class="k-label k-form-label" for="ondaysoftheweek">Дни недели:</label>
+                    <div class="k-form-field-wrap">
+                        @Html.Kendo().MultiSelectFor(m => m.ondaysoftheweek).BindTo(new SelectListItem[]
+                                     {
+                                       new SelectListItem() { Text="Понедельник" , Value="1" },
+                                       new SelectListItem() { Text="Вторник" , Value="2" },
+                                       new SelectListItem() { Text="Среда" , Value="3" },
+                                       new SelectListItem() { Text="Четверг" , Value="4" },
+                                       new SelectListItem() { Text="Пятница‎" , Value="5" },
+                                       new SelectListItem() { Text="Суббота‎" , Value="6" },
+                                       new SelectListItem() { Text="Воскресенье" , Value="7" }
+
+                                     }).DataTextField("Text").DataValueField("Value").HtmlAttributes(new { style = "width:100%;" })
+                    </div>
+                </div>
+                <div class="k-form-field" style="width:49%; float:left;">
+                    <label class="k-label k-form-label" for="startingdailyat">Ежедневно начинать с:</label>
+                    <div class="k-form-field-wrap">
+                        @Html.Kendo().TimePickerFor(m => m.startingdailyat).Interval(15).HtmlAttributes(new { style = "width:100%;" })
+                    </div>
+                </div>
+                <div class="k-form-field" style="width:49%; float:right;">
+                    <label class="k-label k-form-label" for="endingdailyat">Ежедневно заканчивать в:</label>
+                    <div class="k-form-field-wrap">
+                        @Html.Kendo().TimePickerFor(m => m.endingdailyat).Interval(15).HtmlAttributes(new { style = "width:100%;" })
+                    </div>
+                </div>
+                <div class="k-form-field">
+                    <label class="k-label k-form-label" for="intervalinminutes">Интервал в минутах:</label>
+                    <div class="k-form-field-wrap">
+                        @Html.Kendo().IntegerTextBoxFor(m => m.intervalinminutes).HtmlAttributes(new { style = "width:100%;" })
+                    </div>
+                </div>
+            </fieldset>
+            </form>
+            <div class="k-edit-buttons k-state-default" >
+                @(Html.Kendo().Button().Name("SaveScheduler").Tag("div").HtmlAttributes(new { type = "button", @class = "k-primary" }).Icon("check").Content("Сохранить").Events(click => click.Click("saveSchedulerSettings")))
+            </div>
+
+</div>
+</div>

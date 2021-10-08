@@ -1,0 +1,87 @@
+﻿
+@{
+    ViewData["Title"] = "Почта";
+
+}
+
+@(Html.Kendo().Splitter()
+                  .Name("horizontal")
+                  .Orientation(SplitterOrientation.Horizontal)
+                  .HtmlAttributes(new { style = "height: 100%" })
+                  .Panes(horizontalPanes =>
+                  {
+                      horizontalPanes.Add()
+                                    .HtmlAttributes(new { id = "regulations-pane" })
+                                    //.Size("280px")
+                                    .MinSize("250px")
+                                    .Collapsible(false)
+                                    .Content(@<div class="pane-conten">@Html.Partial("~/Views/Regulation/Tree.cshtml")</div>);
+                                    //.Content(@<div class="pane-conten">@Html.Partial("~/Views/Regulation/TreeList.cshtml")</div>);
+
+
+                       horizontalPanes.Add()
+                                   .HtmlAttributes(new { id = "mails-pane" })
+                                   .Scrollable(false)
+                                   .Collapsible(false)
+                                   .Content(@<div class="pane-content" style="height:100%;">@Html.Partial("~/Views/Mails/List.cshtml")</div>);
+
+                   })
+                   .Events(ev=>ev.Resize("onResize"))
+)
+<script>
+   
+    $(document).ready(function () {
+        var splitter = $("#horizontal").data("kendoSplitter");
+
+        var size = localStorage.getItem('sidebar_width');
+        if (size) {
+            splitter.size(".k-pane:first", size);
+        }
+        else {
+            //default
+            splitter.size(".k-pane:first", "280px");
+        }
+
+        //
+        
+        LoadData();
+        
+
+    })
+
+
+    function LoadData(id)
+    {
+        var tree = $("#RegulationsTreeView").data("kendoTreeView");
+        var dataSource = tree.dataSource;
+        kendo.ui.progress(tree.element, true);
+        dataSource.read().then(function () {
+
+            //Fist node default
+            var node = $("#RegulationsTreeView").find('.k-first');
+            //Select node
+            if (id) {
+                //Select node
+                var item = dataSource.get(id);
+                node = tree.findByUid(item.uid);
+                
+            }
+           
+            tree.select(node);
+            
+            tree.trigger('select', { node: node });
+
+            kendo.ui.progress(tree.element, false);
+        });
+    }
+
+    function onResize(e) {
+        
+        var splitter = $("#horizontal").data("kendoSplitter");
+        var size = splitter.size(".k-pane:first");
+        if (size) {
+            localStorage.setItem('sidebar_width', size);
+        }
+        
+    }
+</script>

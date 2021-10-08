@@ -1,0 +1,326 @@
+﻿<script id="treeview-template" type="text/kendo-ui-template">
+    <span class="tree-node">
+        <span style="white-space:normal;">
+            <span class="folder-name">
+                # if (item.Disabled) { #
+                # if (item.isEdit ==1) { #
+                <span class='k-icon k-i-minus-circle'></span>
+                # } #
+                #} else { #
+                <span class='k-icon k-i-check-circle'></span>
+                # } #
+                #: item.Name #
+            </span>
+        </span>
+        <span style="float:right;">
+            <span class="badge badge-total">#: item.Total #</span>
+            <span class="badge badge-count" # if (item.Count <= 0) { # style="display:none" # } #>+#: item.Count #</span>
+            # if (item.isEdit == 1) { #
+                <span class='k-icon k-i-edit regulation-action regulation-edit' title="Редактировать"></span>
+                <span class='k-icon k-i-copy regulation-action regulation-copy' title="Копировать"></span>
+                <span class='k-icon k-i-close regulation-action regulation-delete' title="Удалить"></span>
+            # } else if(item.isEdit == 2) { #
+                <span class='k-icon k-i-user regulation-action regulation-settargets' title="Получатели"></span>
+            # } #
+        </span>
+    </span>
+</script>
+    <aside class="main-sidebar">
+        
+        @(Html.Kendo().Button().Name("create").Tag("div").HtmlAttributes(new { type = "button", @class = "new-regulation" }).Icon("add").Content("Создать правило").Events(click => click.Click("CreateRegulationClick")))
+        <div class="content">
+            @(Html.Kendo().TreeView()
+                                                                                    .Name("RegulationsTreeView")
+                                                                                    .DataTextField("Name")
+                                                                                    .TemplateId("treeview-template")
+                                                                                    .AutoBind(false)
+                                                                                    .Events(ev =>
+                                                                                    {
+                                                                                        //ev.Drop("onSectionDrop");
+                                                                                        ev.Select("onRegulatioSelect");
+                                                                                    })
+                                                                                    .ExpandAll(true)
+                                                                                    .DataSource(dataSource =>
+                                                                                    {
+                                                                                        dataSource.Read(read => read.Action("TreeRead", "RegulationsService").Data("ReadDatesPeriod"));
+                                                                                        dataSource.Model(model => model.Id("Id").HasChildren("hasChildren"));
+                                                                                        
+                                                                                    })
+            )
+        </div>
+    </aside>
+
+        <div id="window-details">
+            @(Html.Kendo().Window()
+                                                    .Name("windowMessage")
+                                                    .Modal(true)
+                                                    .Visible(false)
+                                                    .Draggable()
+                                                    .HtmlAttributes(new { @class = "k-popup-edit-form" })
+                                                    .Events(ev => ev.Refresh("onWindowRefresh"))
+            )
+        </div>
+<script>
+
+
+
+
+    //Edite regulation
+    $(document).on("click", ".regulation-edit", function (e) {
+
+        e.preventDefault();
+
+        var treeview = $("#RegulationsTreeView").data("kendoTreeView");
+        var item = treeview.dataItem($(this).closest(".k-item"));
+
+        var param = { Id: item.Id, Name: item.Name, Filter: item.Filter, Disabled: item.Disabled, sendto: item.sendto.slice(0) };
+
+        showWindows("Редактировать правило", "@Url.Action("WindowDetails", "Regulation")", param)
+     });
+
+      //Copy regulation
+    $(document).on("click", ".regulation-copy", function (e) {
+
+        e.preventDefault();
+
+        var treeview = $("#RegulationsTreeView").data("kendoTreeView");
+        var item = treeview.dataItem($(this).closest(".k-item"));
+
+        var param = { Id: 0, Name: item.Name, Filter: item.Filter, Disabled: item.Disabled, sendto: item.sendto.slice(0) };
+
+        showWindows("Новое правило", "@Url.Action("WindowDetails", "Regulation")", param)
+    });
+
+      //Set targets
+      $(document).on("click", ".regulation-settargets", function (e) {
+
+        e.preventDefault();
+
+        var treeview = $("#RegulationsTreeView").data("kendoTreeView");
+        var item = treeview.dataItem($(this).closest(".k-item"));
+
+        var param = { Id: item.Id, sendto: item.sendto.slice(0) };
+
+        showWindows("Получатели", "@Url.Action("SetTargets", "Regulation")", param)
+    });  
+
+
+    //Delete regulation
+    $(document).on("click", ".regulation-delete", function (e) {
+            e.preventDefault();
+
+            var tree = $("#RegulationsTreeView").data("kendoTreeView");
+            var node = $(this).closest(".k-item");
+            var item = tree.dataItem($(this).closest(".k-item"));
+            var id = item.Id;
+
+            kendo.confirm("Вы уверены что хотите удалить данное правило?").then(function () {
+                $.ajax({
+                    url: "@Url.Action("Delete", "RegulationsService")",
+                    datatype: 'json',
+                    timeout: 20000,
+                    type: 'POST',
+                    contentType: 'application/x-www-form-urlencoded;charset=Windows-1251',
+                    data: { id: id },
+                    success: function (data) {
+                        if (data.message == "OK") {
+
+                            tree.remove(node);
+                            var first = $("#RegulationsTreeView").find('.k-first');
+                            tree.select(first);
+                            tree.trigger('select', { node: first });
+                        }
+                        else {
+
+                            showError(data.errors);
+                        }
+                    },
+                    error: function (xhr, ajaxOptions, thrownError) {
+                        showError(thrownError + "-" + xhr.status);
+                    }
+
+                });
+            });
+
+        });
+
+    //Load filter
+    function loadFilter(options)
+    {
+        if (options) {
+            var filter = $("#filter").getKendoFilter();
+            options = JSON.parse(options);
+            filter.setOptions(options);
+        }
+
+    }
+            //Refresh Regulations
+    function refreshTreeNode(regulation) {
+
+        var tree = $("#RegulationsTreeView").data("kendoTreeView");
+        var dataSource = tree.dataSource;
+        var item = dataSource.get(regulation.Id);
+
+        item.set("Id", regulation.Id);
+        item.set("Name", regulation.Name);
+        item.set("Disabled", regulation.Disabled);
+        item.set("sendto", regulation.sendto);
+
+    }
+
+           
+    function showWindows(title, url, param) {
+
+        var wnd = $("#windowMessage").data("kendoWindow");
+        //Clean content
+        wnd.content("");
+
+        //Set title
+        wnd.title(title);
+
+        ////Load content
+        wnd.refresh({
+            url: url,
+            type: "POST",
+            datatype: "json",
+            data: param
+
+        });
+
+            }
+
+
+   
+
+
+    
+    function SetTreeCount(tag,val) {
+        var tree = $("#RegulationsTreeView").data("kendoTreeView");
+        var selectednode = tree.select();
+        var element = selectednode.children().find(tag);
+
+
+        element.text(val);
+        if (val > 0) {
+
+            element.show();
+        }
+        else {
+
+            element.hide();
+        }
+    }
+
+    
+    function GetTreeCount(tag) {
+        var tree = $("#RegulationsTreeView").data("kendoTreeView");
+        var selectednode = tree.select();
+        var element = selectednode.children().find(tag);
+
+        if (element.length > 0) {
+
+            return parseInt(element.text(), 0);
+        }
+        else {
+
+            return 0;
+        }
+    }
+
+    ///Set total mails
+    function SetTreeCountSent(val)
+    {
+       
+        SetTreeCount(".badge-count", "+" + val);
+
+    }
+
+    ///Set total mails
+    function SetTreeCountAll(val) {
+
+        SetTreeCount(".badge-total", val);
+      
+    }
+
+    //Get total mails
+    function GetTreeCountAll()
+    {
+        
+        return GetTreeCount(".badge-total");
+       
+    }
+
+     
+    function GetTreeCountSent()
+    {
+        return GetTreeCount(".badge-count");
+       
+    }
+         
+    //Tree node select
+            function onRegulatioSelect(e) {
+                var treeview = $("#RegulationsTreeView").data("kendoTreeView");
+                var item = treeview.dataItem(e.node);
+                var grid = $("#mailsGrid").data("kendoGrid")
+                var dataSource = grid.dataSource;
+                //Reset counter endless page
+                grid._endlessPageSize = 25;
+
+                if (item.Filter && item.Id > 0) {
+                    var query = JSON.parse(item.Filter).expression;
+
+                    dataSource.filter(query);
+                }
+                else {
+
+                    dataSource.filter({});
+                }
+
+            }
+        
+  
+
+    //Click Add Button
+    function CreateRegulationClick(e)
+    {
+        showWindows("Новое правило","@Url.Action("WindowDetails", "Regulation")");
+    }
+
+    function onWindowRefresh(e)
+    {
+        //Load Filter
+        loadFilter($("#Filter").val());
+
+        //tree checks item
+        treeevents();
+
+        //Tree first open
+        childsCheck(dropdowntree.value().slice(0));
+
+        //Open
+        this.center().open();
+    }
+
+    function closeWindow()
+    {
+         $("#windowMessage").data("kendoWindow").close();
+    }
+
+</script>
+        <style>
+            .regulation-action {
+                cursor:pointer;
+            }
+            .badge-count {
+                padding: 2px;
+                border-width: 1px;
+                font-size: 11px;
+                line-height: 1;
+                border-color: #818181;
+                color: #fff;
+                background-color: #818181;
+            }
+            .k-notification-error {
+                max-width: 500px;
+            }
+        </style>
